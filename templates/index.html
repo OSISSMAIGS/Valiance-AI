@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="chat-container">
+    <div class="welcome-screen" id="welcome-screen">
+        <!-- <div class="welcome-icon">
+            <i class="fas fa-robot"></i>
+        </div> -->
+        <div class="welcome-logo">
+            <div class="welcome-logo-img"></div>
+            <h2>
+                Halo, Selamat datang di Valiance AI 
+                <span id="version-wrap">Beta</span> 👋
+            </h2>
+        </div>
+        <div class="suggestions">
+            <div class="suggestion-title">Beberapa contoh percakapan:</div>
+            <div class="suggestion-items">
+                <div class="suggestion-item" onclick="suggestPrompt('Siapakah Syahdan Rafi Akram ?')">
+                    Siapakah Syahdan Rafi Akram ?
+                </div>
+                <div class="suggestion-item" onclick="suggestPrompt('Sebutkan seluruh nama anggota OSIS seksi bidang Multimedia !')">
+                    Sebutkan seluruh nama anggota OSIS seksi bidang Multimedia !
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-messages" id="chat-messages">
+        <!-- Messages will be added here dynamically -->
+    </div>
+
+    <div class="chat-input-container">
+        <div class="chat-input-wrapper">
+            <textarea id="user-input" placeholder="Ketik pesan Anda di sini..." rows="1"></textarea>
+            <button id="send-button" disabled>
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+        <div class="input-footer">
+            <p>AIGenie dapat memberikan informasi yang tidak akurat. Verifikasi informasi penting.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

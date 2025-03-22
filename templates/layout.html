@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Valiance AI | OSIS SMA IGS</title>
+  <link rel="shortcut icon" href="{{ url_for('static', filename='/assets/favicon.png') }}" type="image/x-icon">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Highlight.js dan marked.js -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+</head>
+<body>
+  <!-- Tombol toggle sidebar -->
+  <button class="sidebar-toggle">
+    <i class="fas fa-bars"></i>
+  </button>
+
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="welcome-logo-img" id="sidebar-logo"></div>
+        <div class="model-name">
+            <h1>Valiance AI</h1>
+            <p>Gemini 2.0 Flash</p>
+        </div>
+      </div>
+      <button class="new-chat-btn">
+        <i class="fas fa-plus"></i> Chat Baru
+      </button>
+    
+      <button class="back-btn">
+        <i class="fa-solid fa-arrow-right"></i> Back to Valiance
+      </button>
+
+      <div class="history">
+        <h3>Riwayat Percakapan</h3>
+        <ul class="chat-history">
+          <!-- History items will be added dynamically -->
+        </ul>
+      </div>
+      <div class="sidebar-footer">
+        <p>Powered by Gemini 2.0 Flash API</p>
+        <p class="copyright">Copyright © 2025 Sekbid Multimedia Website Valiance</p>
+      </div>
+    </aside>
+
+    <main class="content">
+      {% block content %}
+      
+      {% endblock %}
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+</body>
+</html>
