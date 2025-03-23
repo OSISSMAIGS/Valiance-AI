@@ -12,8 +12,6 @@ Valiance AI Agent adalah aplikasi chatbot berbasis **Flask** yang mengintegrasik
 - [Endpoint API](#endpoint-api)
 - [Struktur Proyek](#struktur-proyek)
 - [Tuning Data dan Kustomisasi](#tuning-data-dan-kustomisasi)
-- [Kontribusi](#kontribusi)
-- [Lisensi](#lisensi)
 
 ## Fitur
 

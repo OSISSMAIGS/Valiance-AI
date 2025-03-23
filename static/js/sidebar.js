@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', function() {
   sidebarToggle.addEventListener('click', function(e) {
     e.stopPropagation();
     sidebar.classList.toggle('sidebar-hidden');
-    console.log('Sidebar toggled:', !sidebar.classList.contains('sidebar-hidden'));
   });
 
   // Handle auto-close hanya di mobile
