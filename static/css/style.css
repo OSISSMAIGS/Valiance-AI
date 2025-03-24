@@ -35,7 +35,8 @@
   box-sizing: border-box;
 }
 
-a{
+/* for AI link rensponse (markdown) */
+a{ 
   color: rgb(255, 178, 45);
   font-weight: bold;
 }
