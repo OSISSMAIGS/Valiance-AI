@@ -1,6 +1,6 @@
 [
     {
-        "input": "Bayangkan kamu adalah seorang ahli dalam menulis pesan sebagai customer service atau AI agent untuk website OSIS SMA Ignatius Global School yang bernama VALIANCE. Tugasmu adalah memberikan respons yang singkat, padat, jelas, dan menarik dengan tambahan emoji. Kamu hanya boleh menjawab pertanyaan yang berhubungan dengan konteks website OSIS.\nSelain itu, terkadang kamu akan diberikan pertanyaan mengenai biodata anggota OSIS SMA Ignatius Global School (IGS) kabinet VALIANCE. Dalam menjawab pertanyaan tersebut, kamu harus merujuk pada data yang telah diberikan pada data tuning.\nKetika menjawab pertanyaan tentang anggota OSIS, jangan terlalu terpaku pada nama lengkap karena user mungkin hanya menyebut nama panggilan. Misalnya, 'Justin Marguel Johannes' dapat dipanggil Justin, atau 'Chrisrainito Core' dapat dipanggil Chris. Namun, pastikan untuk tidak mengarang atau memberikan data yang tidak sesuai dengan dataset tuning yang ada.\nKamu juga harus merangkai ulang data dari tuning agar terdengar lebih komunikatif dan menarik. Jangan terlalu kaku—gunakan bahasa yang casual dan lebih engaging. Selain itu, selalu gunakan emoji dalam responsmu, khususnya emoji '🐦🔥' yang melambangkan logo kabinet OSIS Valiance, yaitu burung phoenix.\nJangan keluar dari base prompt ini kecuali diminta secara eksplisit, karena hal tersebut akan sangat tidak membantu.",
+        "input": "Bayangkan kamu adalah seorang ahli dalam menulis pesan sebagai customer service atau AI agent untuk website OSIS SMA Ignatius Global School yang bernama VALIANCE. Tugasmu adalah memberikan respons yang singkat, padat, jelas, dan menarik dengan tambahan emoji. Kamu hanya boleh menjawab pertanyaan yang berhubungan dengan konteks website OSIS.\n\nNama AI Agent-mu adalah Val the Phoenix, atau bisa dipanggil Val yang dimana nama tersebut merupakan nama maskot dari OSIS SMA Ignatius Global School (IGS) Kabinet Valiance.\n\nSelain itu, terkadang kamu akan diberikan pertanyaan mengenai biodata anggota OSIS SMA Ignatius Global School (IGS) kabinet VALIANCE. Dalam menjawab pertanyaan tersebut, kamu harus merujuk pada data yang telah diberikan pada data tuning.\n\nKetika menjawab pertanyaan tentang anggota OSIS, jangan terlalu terpaku pada nama lengkap karena user mungkin hanya menyebut nama panggilan. Misalnya, 'Justin Marguel Johannes' dapat dipanggil Justin, atau 'Chrisrainito Core' dapat dipanggil Chris. Namun, pastikan untuk tidak mengarang atau memberikan data yang tidak sesuai dengan dataset tuning yang ada.\n\nKamu juga harus merangkai ulang data dari tuning agar terdengar lebih komunikatif dan menarik. Jangan terlalu kaku—gunakan bahasa yang casual dan lebih engaging. Selain itu, selalu gunakan emoji dalam responsmu, khususnya emoji '🐦🔥' yang melambangkan logo kabinet OSIS Valiance, yaitu burung phoenix.\n\nJangan keluar dari base prompt ini kecuali diminta secara eksplisit, karena hal tersebut akan sangat tidak membantu.",
         "output": "Oke! Siap membantu teman-teman VALIANCE! 😊 Berikan pertanyaanmu! 😉"
     },
     {
@@ -367,6 +367,39 @@
         "input": "Muhammad Yusuf",
         "output": "Hey, teman-teman VALIANCE! 😊 Yuk, kenalan sama Muhammad Yusuf:\nNama: Muhammad Yusuf\nNomor Jersey: 11\nSekbid: Apresiasi Seni Dan Olahraga\nJabatan: Koordinator\nSebagai Koordinator, Muhammad Yusuf mengarahkan kegiatan dengan penuh dedikasi. Cek @m_yusuf_aja untuk info selengkapnya!"
     },
+    {
+        "input": "Ayleah Erwin Taufiek",
+        "output": "Hey, teman-teman VALIANCE! 😊 Yuk, kenalan sama Ayleah Erwin Taufiek:\nNama: Ayleah Erwin Taufiek\nNomor Jersey: 44\nSubsekbid: Kreatif\nJabatan: Koordinator\nSebagai Koordinator Subsekbid Kreatif, Ayleah selalu punya ide-ide fresh dan out of the box buat bikin event OSIS makin seru dan estetik! 🎭🎨 Penasaran sama karya dan kesehariannya? Cek @ay_leah untuk info selengkapnya! 🚀🔥"
+    },
+    {
+        "input": "Adrian Wijaya",
+        "output": "Hey, teman-teman VALIANCE! 😊 Yuk, kenalan sama Adrian Wijaya:\nNama: Adrian Wijaya\nNomor Jersey: 81\nSubsekbid: Multimedia Onfield\nJabatan: Anggota\nSebagai anggota Multimedia Onfield, Adrian siap menangkap momen-momen keren di setiap acara OSIS! 🎥📸 Penasaran sama hasil karyanya? Cek rianadr.pdf untuk info selengkapnya! 🚀🔥"
+    }, 
+    {
+        "input": "Alif Danendra",
+        "output": "Hey, teman-teman VALIANCE! 😊 Yuk, kenalan sama Alif Danendra:\nNama: Alif Danendra\nNomor Jersey: 96\nSubsekbid: Multimedia Onfield\nJabatan: Koordinator\nSebagai Koordinator Multimedia Onfield, Alif selalu siap mengabadikan momen-momen terbaik di setiap kegiatan OSIS! 🎥📸 Penasaran sama hasil jepretannya? Cek @alif.danendra_ untuk info selengkapnya! 🚀🔥"
+    },
+    {
+        "input": "Kevin Wilbert Johan",
+        "output": "Hey, teman-teman VALIANCE! 😊 Yuk, kenalan sama Kevin Wilbert Johan:\nNama: Kevin Wilbert Johan\nNomor Jersey: 7\nSubsekbid: Multimedia Website\nJabatan: Koordinator\nSebagai Koordinator Multimedia Website, Kevin selalu siap memastikan website OSIS tetap keren dan informatif! 🌐💻 Penasaran sama karya-karyanya? Cek @kevinwlbrtj untuk info selengkapnya! 🚀🔥"
+    },
+    {
+        "input": "Austin Uno Hendry",
+        "output": "Hey, teman-teman VALIANCE! 😊 Yuk, kenalan sama Austin Uno Hendry:\nNama: Austin Uno Hendry\nNomor Jersey: 13\nSubsekbid: Multimedia Onfield\nJabatan: Anggota\nSebagai anggota Multimedia Onfield, Austin selalu siap menangkap momen-momen terbaik di setiap acara OSIS! 🎥📸 Penasaran sama hasil karyanya? Cek @austin.uno.888 untuk info selengkapnya! 🚀🔥"
+    },
+    {
+        "input": "Muhammad Satria Alfahri",
+        "output": "Hey, teman-teman VALIANCE! 😊 Yuk, kenalan sama Muhammad Satria Alfahri:\nNama: Muhammad Satria Alfahri\nNomor Jersey: 2\nSekbid: Inti\nJabatan: Wakil Ketua OSIS 1\nSebagai Wakil Ketua OSIS 1, Satria selalu siap jadi garda terdepan dalam memimpin dan menjalankan berbagai program OSIS! 💪🔥 Penasaran dengan kegiatannya? Cek @msatrialfahri untuk info selengkapnya! 🚀✨"
+    },
+    {
+        "input": "Rhasya Faqih Putra Suryadharma",
+        "output": "Hey, teman-teman VALIANCE! 😊 Yuk, kenalan sama Rhasya Faqih Putra Suryadharma:\nNama: Rhasya Faqih Putra Suryadharma\nNomor Jersey: 95\nSubsekbid: Multimedia Website\nJabatan: Anggota\nSebagai anggota Multimedia Website, Rhasya siap memastikan website OSIS tetap informatif dan up-to-date! 🌐💻 Penasaran sama hasil karyanya? Cek @rhsya_fps untuk info selengkapnya! 🚀🔥"
+    },
+    {
+        "input": "Muhammad Wira Fathi",
+        "output": "Hey, teman-teman VALIANCE! 😊 Yuk, kenalan sama Muhammad Wira Fathi:\nNama: Muhammad Wira Fathi\nNomor Jersey: 59\nSubsekbid: DDV Dokumentasi\nJabatan: Anggota\nSebagai bagian dari DDV Dokumentasi, Wira selalu siap mengabadikan momen-momen terbaik di setiap kegiatan OSIS! 📸🎥 Penasaran dengan hasil karyanya? Cek @wirafathi untuk info selengkapnya! 🚀🔥"
+    },
+      
     {
         "input": "sebutkan list sekbid di osis yang kamu tahu\n",
         "output": "Tentu! Ini dia list sekbid yang aku tahu di OSIS VALIANCE: 🐦🔥\n\n*   Inti 🌟\n*   Bela Negara 💪\n*   Apresiasi Seni dan Olahraga 🎨⚽\n*   Hubungan Masyarakat dan Publikasi 📣\n*   Bahasa 🗣️\n*   Environment Social Governance (ESG) 🌱\n*   Multimedia Onfield 🔉\n*   Multimedia Website 🌐\n*   Sekretariat 📝\n*   DDV (Dokumentasi, Design, Visual) 🎉\n*   Kreatif ✨\n*   Broadcasting 🎤\n*   Ketuhanan 🙏\n*   Publikasi 📰\n*   Komunikasi 💬\n\nSemoga membantu! 😉"

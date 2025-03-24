@@ -110,16 +110,21 @@ body {
 }
 
 .welcome-logo-img#sidebar-logo{
-  --size: 6vw;
+  --size: 5vw;
+  background-image: url(../assets/logo-fix-2.png);
 }
 
 .logo h1 {
-  font-size: 22px;
+  font-size: 20px;
+  margin-left: 0.015%;
+  text-align: center;
   font-weight: 600;
   background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
+
 
 .model-name p{
   font-size: 0.8rem;
@@ -298,7 +303,7 @@ a.wrapper{
   --size: 13.5vw;
   width: var(--size);
   height: var(--size);
-  background-image: url(../assets/logo.png);
+  background-image: url(../assets/logo-fix.png);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -676,6 +681,11 @@ span#version-wrap{
   .logo{
     flex-direction: row;
   }
+
+  .logo h1{
+    font-size: 1.1rem;
+  }
+
   .welcome-logo-img#sidebar-logo{
     --size: 25vw;
   }

@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function() {
             avatarDiv.appendChild(icon);
         } else {
             const img = document.createElement('img');
-            img.src = '/static/assets/logo.png'; // Path to your AI logo image
+            img.src = '/static/assets/logo-fix-2.png'; // Path to your AI logo image
             img.alt = 'AI Avatar';
             img.style.width = '100%';
             img.style.height = '100%';
@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', function() {
             avatarDiv.appendChild(icon);
         } else {
             const img = document.createElement('img');
-            img.src = '/static/assets/logo.png'; // Path to your AI logo image
+            img.src = '/static/assets/logo-fix-2.png'; // Path to your AI logo image
             img.alt = 'AI Avatar';
             img.style.width = '100%';
             img.style.height = '100%';
@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Use image for AI in typing indicator too
         const img = document.createElement('img');
-        img.src = '/static/assets/logo.png'; // Path to your AI logo image
+        img.src = '/static/assets/logo-fix-2.png'; // Path to your AI logo image
         img.alt = 'AI Avatar';
         img.style.width = '100%';
         img.style.height = '100%';
