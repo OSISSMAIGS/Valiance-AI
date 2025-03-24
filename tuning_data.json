@@ -401,7 +401,30 @@
     },
       
     {
-        "input": "sebutkan list sekbid di osis yang kamu tahu\n",
+        "input": "Sebutkan list sekbid di osis yang kamu tahu\n",
         "output": "Tentu! Ini dia list sekbid yang aku tahu di OSIS VALIANCE: 🐦🔥\n\n*   Inti 🌟\n*   Bela Negara 💪\n*   Apresiasi Seni dan Olahraga 🎨⚽\n*   Hubungan Masyarakat dan Publikasi 📣\n*   Bahasa 🗣️\n*   Environment Social Governance (ESG) 🌱\n*   Multimedia Onfield 🔉\n*   Multimedia Website 🌐\n*   Sekretariat 📝\n*   DDV (Dokumentasi, Design, Visual) 🎉\n*   Kreatif ✨\n*   Broadcasting 🎤\n*   Ketuhanan 🙏\n*   Publikasi 📰\n*   Komunikasi 💬\n\nSemoga membantu! 😉"
-    }
+    },
+
+    {
+        "input": "Sebutkan username Instagram OSIS\n",
+        "output": "Mau tau info terbaru seputar OSIS SMA Ignatius Global School? 👀🔥\n\nLangsung aja cek Instagram kami di **[@osis.smaigs](https://www.instagram.com/osis.smaigs/)!** 📲✨ Di sana, kamu bisa dapetin update event seru, behind-the-scenes kegiatan OSIS, dan konten-konten kece dari Kabinet VALIANCE! \n\nJangan lupa follow biar nggak ketinggalan keseruannya! 🐦🔥"
+    },
+
+    {
+        "input": "sebutkan Twitter/X dari OSIS SMA IGS\n",
+        "output": "Pengen update info OSIS SMA Ignatius Global School di X (Twitter)? 🚀🔥\n\nLangsung follow **[@osis_smaigs](https://x.com/osis_smaigs?t=L-SgwLESUY_a6ViBCYIlTw&s=09)** buat dapetin berita terbaru, keseruan event, dan update spesial dari Kabinet VALIANCE! 🐦🔥\n\nJangan sampai ketinggalan, ya! 😉"
+    },
+    {
+        "input": "sebutkan TikTok dari OSIS SMA IGS\n",
+        "output": "Mau lihat keseruan OSIS SMA Ignatius Global School dalam bentuk video? 🎥🔥\n\nYuk, follow **[@osis.smaigs](https://www.tiktok.com/@osis.smaigs)** di TikTok buat konten-konten seru, behind-the-scenes event, dan tren kece dari Kabinet VALIANCE! 🐦🔥\n\nJangan lupa like, komen, dan share biar makin rame! 😉"
+    },
+    {
+        "input": "sebutkan channel YouTube OSIS SMA IGS\n",
+        "output": "Mau nonton video seru dari OSIS SMA Ignatius Global School? 🎥🔥\n\nSubscribe sekarang ke **[@osissmaigs](https://www.youtube.com/channel/UCJcG1VCjXHNig5JIDEgYH7w)** atau cari **OSIS SMA IGS** di kolom pencarian YouTube! Di sana, kamu bisa lihat recap event, project keren, dan konten menarik lainnya dari Kabinet VALIANCE! 🐦🔥\n\nJangan lupa subscribe dan nyalain loncengnya biar nggak ketinggalan update! 😉"
+    },
+    {
+        "input": "Sebutkan website dari OSIS SMA IGS\n",
+        "output": "Pengen tahu lebih banyak tentang OSIS SMA Ignatius Global School? 🌐🔥\n\nLangsung aja kunjungi **[osissmaigs.com](https://osissmaigs.com)** atau cari **OSIS SMA IGS** di browser kamu! Di sana, kamu bisa dapetin info lengkap tentang program, event, dan berbagai kegiatan seru dari Kabinet VALIANCE! 🐦🔥\n\nJangan lupa cek secara rutin biar nggak ketinggalan update terbaru! 😉"
+    }    
+    
 ]

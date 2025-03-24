@@ -1,6 +1,6 @@
-# Valiance AI Agent
+# Valiance AI Agent (Val the Phoenix)
 
-Valiance AI Agent adalah aplikasi chatbot berbasis **Flask** yang mengintegrasikan [Gemini API](https://cloud.google.com/vertex-ai/docs/generative-ai) untuk menghasilkan respons cerdas secara real-time. Aplikasi ini dirancang khusus untuk memenuhi kebutuhan OSIS SMA Ignatius Global School, menyediakan antarmuka chat yang interaktif dan mendukung _tuning_ data agar respons yang diberikan semakin akurat dan sesuai konteks.
+Val the Phoenix adalah aplikasi chatbot berbasis **Flask** yang mengintegrasikan [Gemini API](https://cloud.google.com/vertex-ai/docs/generative-ai) untuk menghasilkan respons cerdas secara real-time. Aplikasi ini dirancang khusus untuk memenuhi kebutuhan OSIS SMA Ignatius Global School, menyediakan antarmuka chat yang interaktif dan mendukung _tuning_ data agar respons yang diberikan semakin akurat dan sesuai konteks.
 
 ## Daftar Isi
 
