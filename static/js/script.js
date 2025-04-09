@@ -97,7 +97,10 @@ document.addEventListener('DOMContentLoaded', function() {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ message: message }),
+            body: JSON.stringify({ 
+                message: message,
+                conversation_id: currentConversationId 
+            }),
         })
         .then(response => response.json())
         .then(data => {
@@ -336,9 +339,51 @@ document.addEventListener('DOMContentLoaded', function() {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
     }
     
+    // Function to save conversation to MongoDB
+    function saveConversationToMongoDB(conversation) {
+        fetch('/save-conversation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ conversation: conversation }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Conversation saved to MongoDB:', data.conversation_id);
+            } else {
+                console.log('Note:', data.message);
+                // Still successful from user's perspective - data is in localStorage
+            }
+        })
+        .catch(error => {
+            console.log('MongoDB save failed, but conversation saved to localStorage');
+            // Silent failure - don't disrupt user experience
+        });
+    }
+    
     // Save conversations to local storage
     function saveConversations() {
         localStorage.setItem('aiGenie_conversations', JSON.stringify(conversations));
+        
+        // Find the current conversation
+        const currentConversation = conversations.find(c => c.id === currentConversationId);
+        if (currentConversation) {
+            // Add device info to help with analytics
+            const enhancedConversation = {
+                ...currentConversation,
+                device_info: {
+                    userAgent: navigator.userAgent,
+                    language: navigator.language,
+                    timestamp: new Date().toISOString(),
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                }
+            };
+            
+            // Save to MongoDB
+            saveConversationToMongoDB(enhancedConversation);
+        }
     }
     
     // Load conversations from local storage
