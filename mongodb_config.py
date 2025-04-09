@@ -16,12 +16,15 @@ load_dotenv()
 def get_connection_options():
     """Returns a dictionary of MongoDB connection options"""
     return {
-        'serverSelectionTimeoutMS': 5000,
-        'connectTimeoutMS': 5000,
-        'socketTimeoutMS': 10000,
+        'serverSelectionTimeoutMS': 3000,
+        'connectTimeoutMS': 3000,
+        'socketTimeoutMS': 5000,
         'connect': True,
         'retryWrites': True,
-        'w': 'majority'
+        'w': 'majority',
+        'maxPoolSize': 10,
+        'maxIdleTimeMS': 30000,
+        'waitQueueTimeoutMS': 3000
     }
 
 def get_mongo_uri():
