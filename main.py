@@ -3,6 +3,8 @@ import google.generativeai as genai
 import os
 import json
 import datetime
+import threading
+import time
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import mongodb_config
@@ -17,10 +19,32 @@ genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 model = genai.GenerativeModel('gemini-2.0-flash')
 
 # Initialize MongoDB connection using our helper
-mongo_client, db, chat_collection, mongo_error = mongodb_config.get_mongo_client()
-if mongo_error:
-    print(f"MongoDB connection failed: {mongo_error}")
-    print("App will run without MongoDB functionality")
+# Set a flag to track if MongoDB is enabled
+mongo_enabled = False
+mongo_client = None 
+db = None
+chat_collection = None
+
+# Use a separate thread to initialize MongoDB to avoid blocking startup
+def init_mongodb():
+    global mongo_client, db, chat_collection, mongo_enabled
+    try:
+        mongo_client, db, chat_collection, mongo_error = mongodb_config.get_mongo_client()
+        if mongo_error:
+            print(f"MongoDB connection failed: {mongo_error}")
+            print("App will run without MongoDB functionality")
+            mongo_enabled = False
+        else:
+            mongo_enabled = True
+            print("MongoDB connection successful")
+    except Exception as e:
+        print(f"Error initializing MongoDB: {str(e)}")
+        mongo_enabled = False
+
+# Start MongoDB initialization in background thread
+mongodb_thread = threading.Thread(target=init_mongodb)
+mongodb_thread.daemon = True  # Make thread exit when main thread exits
+mongodb_thread.start()
 
 app = Flask(__name__)
 
@@ -41,14 +65,31 @@ def save_tuning_data(data):
 
 # Function to check MongoDB connection
 def is_mongo_connected():
-    if mongo_client is None:
+    if not mongo_enabled or mongo_client is None:
         return False
     try:
-        # Quick check if MongoDB is still available
-        mongo_client.admin.command('ping')
+        # Quick check if MongoDB is still available with short timeout
+        mongo_client.admin.command('ping', serverSelectionTimeoutMS=1000)
         return True
-    except:
+    except Exception:
         return False
+
+# Function to save to MongoDB in a background thread
+def save_to_mongodb_async(collection, data):
+    def _save_task():
+        try:
+            start_time = time.time()
+            collection.insert_one(data)
+            elapsed = time.time() - start_time
+            print(f"MongoDB insert completed in {elapsed:.2f} seconds")
+        except Exception as e:
+            print(f"MongoDB Error in background thread: {str(e)}")
+    
+    # Start a thread for the save operation
+    thread = threading.Thread(target=_save_task)
+    thread.daemon = True
+    thread.start()
+    return thread
 
 # Muat data tuning saat startup
 tuning_data = load_tuning_data()
@@ -79,7 +120,7 @@ def tune():
 # Endpoint untuk menyimpan percakapan ke MongoDB
 @app.route('/save-conversation', methods=['POST'])
 def save_conversation():
-    if not is_mongo_connected():
+    if not mongo_enabled:
         return jsonify({
             'success': False, 
             'message': 'MongoDB tidak tersedia. Percakapan tetap disimpan di localStorage.'
@@ -92,16 +133,22 @@ def save_conversation():
         return jsonify({'success': False, 'message': 'Data percakapan kosong'}), 400
     
     # Tambahkan timestamp
-    conversation['timestamp'] = datetime.datetime.now()
+    conversation['timestamp'] = datetime.datetime.now().isoformat()
     
-    # Simpan ke MongoDB
+    # Simpan ke MongoDB in background thread
     try:
-        result = chat_collection.insert_one(conversation)
-        return jsonify({
-            'success': True,
-            'message': 'Percakapan berhasil disimpan',
-            'conversation_id': str(result.inserted_id)
-        })
+        if is_mongo_connected():
+            save_to_mongodb_async(chat_collection, conversation)
+            return jsonify({
+                'success': True,
+                'message': 'Percakapan berhasil disimpan',
+                'conversation_id': str(conversation.get('id', ''))
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'MongoDB connection lost. Percakapan tetap disimpan di localStorage.'
+            }), 503
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
 
@@ -144,20 +191,16 @@ def ask():
         ai_response = response.text
         
         # Log conversation data for analytics - MongoDB integration
-        if is_mongo_connected():
+        if mongo_enabled and is_mongo_connected():
             message_data = {
                 'user_input': user_input,
                 'ai_response': ai_response,
-                'timestamp': datetime.datetime.now(),
+                'timestamp': datetime.datetime.now().isoformat(),
                 'conversation_id': conversation_id
             }
             
-            # Menyimpan interaksi ke MongoDB
-            try:
-                chat_collection.insert_one(message_data)
-            except Exception as e:
-                print(f"MongoDB Error: {str(e)}")
-                # Continue even if MongoDB fails - don't impact user experience
+            # Menyimpan interaksi ke MongoDB in background
+            save_to_mongodb_async(chat_collection, message_data)
         
         return jsonify({'response': ai_response, 'rawMarkdown': ai_response})
     except Exception as e:
@@ -166,49 +209,62 @@ def ask():
             return jsonify({'response': 'Server sedang sibuk, silakan coba ulang lain kali (ERROR: 429)'})
         return jsonify({'response': f'Error: {str(e)}'})
 
-# Endpoint to check MongoDB connection status
+# Endpoint to check MongoDB connection status - with quick timeout
 @app.route('/mongodb-status')
 def mongodb_status():
     status = {
         'connected': False,
+        'mongodb_enabled': mongo_enabled,
         'details': {},
         'error': None
     }
     
-    # Get detailed connection info
-    connection_info = mongodb_config.get_detailed_connection_info()
-    status['connection_info'] = connection_info
+    # Only run detailed checks if MongoDB is enabled
+    if not mongo_enabled:
+        status['error'] = 'MongoDB is disabled'
+        return jsonify(status)
     
     try:
         if not mongo_client:
             status['error'] = 'MongoDB client was not initialized'
             return jsonify(status)
             
-        # Try to ping the server
-        result = mongo_client.admin.command('ping')
+        # Try to ping the server with a very short timeout
+        result = mongo_client.admin.command('ping', serverSelectionTimeoutMS=1000)
         status['connected'] = True
         status['details']['ping'] = result
         
-        # Get database stats
-        status['details']['databases'] = mongo_client.list_database_names()
-        
-        # Get collection stats (simplified to avoid timeout)
-        db_stats = {}
-        for db_name in mongo_client.list_database_names():
-            try:
-                db = mongo_client[db_name]
-                db_stats[db_name] = {
-                    'collections': db.list_collection_names()
-                }
-            except Exception as e:
-                db_stats[db_name] = {'error': str(e)}
-        
-        status['details']['db_stats'] = db_stats
+        # Get database list with timeout
+        status['details']['databases'] = mongo_client.list_database_names(serverSelectionTimeoutMS=1000)
         
     except Exception as e:
         status['error'] = str(e)
     
     return jsonify(status)
+
+# Health check endpoint - for monitoring
+@app.route('/health')
+def health_check():
+    health = {
+        'status': 'ok',
+        'timestamp': datetime.datetime.now().isoformat(),
+        'mongo': {
+            'enabled': mongo_enabled,
+            'connected': False
+        }
+    }
+    
+    # Do a quick check of MongoDB if it's enabled
+    if mongo_enabled:
+        try:
+            # Very short timeout to avoid blocking
+            mongo_client.admin.command('ping', serverSelectionTimeoutMS=500)
+            health['mongo']['connected'] = True
+        except Exception as e:
+            health['mongo']['connected'] = False
+            health['mongo']['error'] = str(e)
+    
+    return jsonify(health)
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -339,16 +339,24 @@ document.addEventListener('DOMContentLoaded', function() {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
     }
     
-    // Function to save conversation to MongoDB
+    // Function to save conversation to MongoDB with retry and timeout
     function saveConversationToMongoDB(conversation) {
+        // Set a timeout for the fetch request
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
         fetch('/save-conversation', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ conversation: conversation }),
+            signal: controller.signal
         })
-        .then(response => response.json())
+        .then(response => {
+            clearTimeout(timeoutId);
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 console.log('Conversation saved to MongoDB:', data.conversation_id);
@@ -358,31 +366,44 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.log('MongoDB save failed, but conversation saved to localStorage');
+            // Check if this was an abort error (timeout)
+            if (error.name === 'AbortError') {
+                console.log('MongoDB save timed out - continuing with local storage only');
+            } else {
+                console.log('MongoDB save failed, but conversation saved to localStorage');
+            }
             // Silent failure - don't disrupt user experience
         });
     }
     
     // Save conversations to local storage
     function saveConversations() {
+        // Always save to localStorage first for reliability
         localStorage.setItem('aiGenie_conversations', JSON.stringify(conversations));
         
         // Find the current conversation
         const currentConversation = conversations.find(c => c.id === currentConversationId);
         if (currentConversation) {
-            // Add device info to help with analytics
-            const enhancedConversation = {
-                ...currentConversation,
-                device_info: {
-                    userAgent: navigator.userAgent,
-                    language: navigator.language,
-                    timestamp: new Date().toISOString(),
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                }
-            };
-            
-            // Save to MongoDB
-            saveConversationToMongoDB(enhancedConversation);
+            // Only attempt MongoDB save every 5 seconds at most to avoid excessive requests
+            const now = Date.now();
+            const lastSaveTime = window.lastMongoSaveTime || 0;
+            if (now - lastSaveTime > 5000) { // 5 second minimum between saves
+                window.lastMongoSaveTime = now;
+                
+                // Add device info to help with analytics
+                const enhancedConversation = {
+                    ...currentConversation,
+                    device_info: {
+                        userAgent: navigator.userAgent,
+                        language: navigator.language,
+                        timestamp: new Date().toISOString(),
+                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                    }
+                };
+                
+                // Save to MongoDB with timeout and error handling
+                saveConversationToMongoDB(enhancedConversation);
+            }
         }
     }
     
