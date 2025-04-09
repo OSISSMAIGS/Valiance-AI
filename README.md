@@ -12,6 +12,7 @@ Val the Phoenix adalah aplikasi chatbot berbasis **Flask** yang mengintegrasikan
 - [Endpoint API](#endpoint-api)
 - [Struktur Proyek](#struktur-proyek)
 - [Tuning Data dan Kustomisasi](#tuning-data-dan-kustomisasi)
+- [MongoDB Chat History](#mongodb-chat-history)
 
 ## Fitur
 
@@ -20,6 +21,7 @@ Val the Phoenix adalah aplikasi chatbot berbasis **Flask** yang mengintegrasikan
 - **Antarmuka Chat Interaktif:** UI berbasis web dengan dukungan Markdown, syntax highlighting, dan riwayat percakapan.
 - **Responsif dan User-Friendly:** Auto-resizing input, pengelolaan riwayat chat, dan fitur "New Chat" untuk memulai percakapan baru.
 - **Error Handling:** Penanganan error seperti rate limit (ERROR 429) dan pengecekan validitas input.
+- **Penyimpanan Riwayat Chat:** Menyimpan seluruh percakapan baik di localStorage untuk pengalaman pengguna maupun di MongoDB untuk keperluan analisis dan pengembangan.
 
 ## Persyaratan
 
@@ -27,8 +29,10 @@ Val the Phoenix adalah aplikasi chatbot berbasis **Flask** yang mengintegrasikan
 - **Flask**
 - **google-generativeai**
 - **python-dotenv**
+- **pymongo**
+- **Akun MongoDB Atlas** (untuk penyimpanan data chat)
 
-Pastikan juga untuk memiliki kunci API yang valid untuk Gemini API.
+Pastikan juga untuk memiliki kunci API yang valid untuk Gemini API dan URI koneksi untuk MongoDB.
 
 ## Instalasi dan Setup
 
@@ -59,12 +63,14 @@ Pastikan juga untuk memiliki kunci API yang valid untuk Gemini API.
 
    ```
    GEMINI_API_KEY=your_gemini_api_key_here
+   MONGO_URI=your_mongodb_uri_here
    ```
 
 ## Konfigurasi
 
 - **Gemini API:** Aplikasi mengkonfigurasi Gemini API dengan membaca kunci API dari file `.env`.
 - **Tuning Data:** Data tuning disimpan di file `tuning_data.json` yang berfungsi untuk menyimpan contoh-contoh pertanyaan dan respons. Data tuning ini digunakan sebagai referensi saat membangun prompt untuk Gemini API.
+- **MongoDB:** Aplikasi menggunakan MongoDB untuk menyimpan riwayat percakapan. Koneksi ke MongoDB dikonfigurasi melalui variabel `MONGO_URI` di file `.env`.
 
 ## Cara Menjalankan Aplikasi
 
@@ -105,10 +111,21 @@ Buka browser dan akses [http://127.0.0.1:5000](http://127.0.0.1:5000) untuk meli
   Endpoint untuk mengajukan pertanyaan ke AI.  
   **Parameter JSON:**  
   - `message`: Pertanyaan dari pengguna.  
+  - `conversation_id`: ID unik untuk percakapan (opsional).
 
   **Response:**  
   - `response`: Jawaban AI dalam format Markdown.
   - `rawMarkdown`: Respons mentah sebelum di-render (jika ada).
+
+- **`/save-conversation` (POST)**  
+  Endpoint untuk menyimpan seluruh percakapan ke MongoDB.  
+  **Parameter JSON:**  
+  - `conversation`: Objek berisi data percakapan lengkap.
+
+  **Response:**  
+  - `success`: Status keberhasilan.
+  - `message`: Pesan status.
+  - `conversation_id`: ID dokumen di MongoDB (jika berhasil).
 
 ## Struktur Proyek
 
@@ -127,7 +144,8 @@ valiance-ai-agent/
 │   │   └── sidebar.js      # Script untuk pengelolaan sidebar
 │   └── assets/
 │       └── logo.png        # Logo AI
-└── .env                    # File environment untuk konfigurasi API key
+├── .env                    # File environment untuk konfigurasi API key dan MongoDB
+└── .env.example            # Template file environment
 ```
 
 ## Tuning Data dan Kustomisasi
@@ -149,6 +167,47 @@ Data tuning adalah kunci agar AI dapat merespons dengan tepat sesuai konteks OSI
   - Mengikuti format yang telah ditetapkan.
   - Menyertakan emoji dan gaya bahasa yang kasual serta engaging.
   - Tidak keluar dari konteks atau memberikan data yang tidak sesuai dengan dataset tuning.
+
+## MongoDB Chat History
+
+Aplikasi ini menyimpan riwayat percakapan di MongoDB untuk keperluan pengembangan dan analisis. Berikut detail implementasinya:
+
+### Struktur Data
+
+Data percakapan disimpan dalam dua bentuk:
+
+1. **Pesan Individual** - Menyimpan setiap pasangan pesan dan respons
+   - `user_input`: Pesan dari pengguna
+   - `ai_response`: Respons dari AI
+   - `timestamp`: Waktu pesan dikirim
+   - `conversation_id`: ID unik untuk percakapan
+
+2. **Seluruh Percakapan** - Menyimpan percakapan lengkap
+   - `id`: ID unik percakapan
+   - `title`: Judul percakapan (biasanya diambil dari pesan pertama)
+   - `messages`: Array berisi semua pesan (user dan AI)
+   - `device_info`: Informasi perangkat pengguna (browser, bahasa, dll)
+   - `timestamp`: Waktu penyimpanan ke database
+
+### Pengaksesan Data
+
+Semua data percakapan disimpan di collection `chat_history` dalam database MongoDB. Developer dapat mengakses data ini melalui:
+
+1. **MongoDB Atlas Dashboard**: Login ke [MongoDB Atlas](https://www.mongodb.com/cloud/atlas), pilih database `valiance_ai_db` dan collection `chat_history`
+2. **MongoDB Compass**: Hubungkan dengan URI MongoDB dan jelajahi data
+3. **Query API**: Gunakan pymongo atau alat lain untuk menjalankan query sesuai kebutuhan analisis
+
+Contoh query MongoDB untuk mendapatkan percakapan terakhir:
+```javascript
+db.chat_history.find().sort({timestamp: -1}).limit(10)
+```
+
+### Keamanan Data
+
+Data disimpan di MongoDB Atlas dengan keamanan standar MongoDB. Pastikan:
+- URI MongoDB memiliki username/password yang aman
+- Akses IP dibatasi ke alamat yang diizinkan
+- Data sensitif tidak disimpan dalam plaintext
 
 ---
 Copyright © 2025 Sekbid Multimedia Website Valiance
