@@ -3,9 +3,37 @@ import google.generativeai as genai
 import os
 import json
 from dotenv import load_dotenv
+from pymongo import MongoClient
+from datetime import datetime, timedelta, timezone
+import traceback
 
 # Load environment variables
 load_dotenv()
+
+# Configure MongoDB
+MONGODB_URI = os.getenv('MONGO_URI')
+mongo_client = None
+db = None
+conversations_collection = None
+mongodb_connected = False
+tz_jakarta = timezone(timedelta(hours=7))
+
+# Try to connect to MongoDB, but continue if it fails
+try:
+    if MONGODB_URI:
+        mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)  # 5 second timeout
+        # Test the connection
+        mongo_client.server_info()
+        db = mongo_client['valiance_ai_db']  # Use the correct database name
+        conversations_collection = db['conversations']
+        mongodb_connected = True
+        print("MongoDB connected successfully")
+except Exception as e:
+    print(f"MongoDB connection failed: {str(e)}")
+    mongo_client = None
+    db = None
+    conversations_collection = None
+    mongodb_connected = False
 
 # Configure the Gemini API
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
@@ -99,6 +127,47 @@ def ask():
         if hasattr(e, 'code') and e.code == 429 or '429' in str(e):
             return jsonify({'response': 'Server sedang sibuk, silakan coba ulang lain kali (ERROR: 429)'})
         return jsonify({'response': f'Error: {str(e)}'})
+
+@app.route('/sync-conversations', methods=['POST'])
+def sync_conversations():
+    # Check if MongoDB is connected
+    if not mongodb_connected:
+        return jsonify({'status': 'warning', 'message': 'MongoDB is not connected, data saved locally only'})
+    
+    try:
+        data = request.json
+        conversations = data.get('conversations', [])
+        user_id = data.get('user_id', 'anonymous')
+        
+        # Update or insert conversations
+        for conv in conversations:
+            # Convert datetime strings for compatibility
+            conv['last_synced'] = datetime.now(tz_jakarta)
+            conv['user_id'] = user_id
+            
+            # Handle serializable date fields if any
+            if 'created_at' in conv and isinstance(conv['created_at'], str):
+                try:
+                    conv['created_at'] = datetime.fromisoformat(conv['created_at'].replace('Z', '+00:00'))
+                except:
+                    pass
+            
+            conversations_collection.update_one(
+                {'id': conv['id']},
+                {'$set': conv},
+                upsert=True
+            )
+        
+        return jsonify({'status': 'success', 'message': 'Conversations synced successfully'})
+    except Exception as e:
+        print(f"Error syncing conversations: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/get-conversations', methods=['GET'])
+def get_conversations():
+    # This endpoint is now disabled for security reasons
+    return jsonify({'status': 'error', 'message': 'Access denied', 'conversations': []}), 403
 
 if __name__ == '__main__':
     app.run(debug=True)
