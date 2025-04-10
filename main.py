@@ -2,49 +2,44 @@ from flask import Flask, render_template, request, jsonify
 import google.generativeai as genai
 import os
 import json
-import datetime
-import threading
-import time
-from pymongo import MongoClient
 from dotenv import load_dotenv
-import mongodb_config
+from pymongo import MongoClient
+from datetime import datetime, timedelta, timezone
+import traceback
 
 # Load environment variables
 load_dotenv()
+
+# Configure MongoDB
+MONGODB_URI = os.getenv('MONGO_URI')
+mongo_client = None
+db = None
+conversations_collection = None
+mongodb_connected = False
+tz_jakarta = timezone(timedelta(hours=7))
+
+# Try to connect to MongoDB, but continue if it fails
+try:
+    if MONGODB_URI:
+        mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)  # 5 second timeout
+        # Test the connection
+        mongo_client.server_info()
+        db = mongo_client['valiance_ai_db']  # Use the correct database name
+        conversations_collection = db['conversations']
+        mongodb_connected = True
+        print("MongoDB connected successfully")
+except Exception as e:
+    print(f"MongoDB connection failed: {str(e)}")
+    mongo_client = None
+    db = None
+    conversations_collection = None
+    mongodb_connected = False
 
 # Configure the Gemini API
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 
 # Initialize the model
 model = genai.GenerativeModel('gemini-2.0-flash')
-
-# Initialize MongoDB connection using our helper
-# Set a flag to track if MongoDB is enabled
-mongo_enabled = False
-mongo_client = None 
-db = None
-chat_collection = None
-
-# Use a separate thread to initialize MongoDB to avoid blocking startup
-def init_mongodb():
-    global mongo_client, db, chat_collection, mongo_enabled
-    try:
-        mongo_client, db, chat_collection, mongo_error = mongodb_config.get_mongo_client()
-        if mongo_error:
-            print(f"MongoDB connection failed: {mongo_error}")
-            print("App will run without MongoDB functionality")
-            mongo_enabled = False
-        else:
-            mongo_enabled = True
-            print("MongoDB connection successful")
-    except Exception as e:
-        print(f"Error initializing MongoDB: {str(e)}")
-        mongo_enabled = False
-
-# Start MongoDB initialization in background thread
-mongodb_thread = threading.Thread(target=init_mongodb)
-mongodb_thread.daemon = True  # Make thread exit when main thread exits
-mongodb_thread.start()
 
 app = Flask(__name__)
 
@@ -62,34 +57,6 @@ def save_tuning_data(data):
     """Menyimpan data tuning ke file JSON."""
     with open(TUNING_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
-
-# Function to check MongoDB connection
-def is_mongo_connected():
-    if not mongo_enabled or mongo_client is None:
-        return False
-    try:
-        # Quick check if MongoDB is still available with short timeout
-        mongo_client.admin.command('ping', serverSelectionTimeoutMS=1000)
-        return True
-    except Exception:
-        return False
-
-# Function to save to MongoDB in a background thread
-def save_to_mongodb_async(collection, data):
-    def _save_task():
-        try:
-            start_time = time.time()
-            collection.insert_one(data)
-            elapsed = time.time() - start_time
-            print(f"MongoDB insert completed in {elapsed:.2f} seconds")
-        except Exception as e:
-            print(f"MongoDB Error in background thread: {str(e)}")
-    
-    # Start a thread for the save operation
-    thread = threading.Thread(target=_save_task)
-    thread.daemon = True
-    thread.start()
-    return thread
 
 # Muat data tuning saat startup
 tuning_data = load_tuning_data()
@@ -117,47 +84,11 @@ def tune():
     save_tuning_data(tuning_data)
     return jsonify({'response': 'Data tuning berhasil disimpan!'})
 
-# Endpoint untuk menyimpan percakapan ke MongoDB
-@app.route('/save-conversation', methods=['POST'])
-def save_conversation():
-    if not mongo_enabled:
-        return jsonify({
-            'success': False, 
-            'message': 'MongoDB tidak tersedia. Percakapan tetap disimpan di localStorage.'
-        }), 503
-    
-    data = request.json
-    conversation = data.get('conversation', {})
-    
-    if not conversation:
-        return jsonify({'success': False, 'message': 'Data percakapan kosong'}), 400
-    
-    # Tambahkan timestamp
-    conversation['timestamp'] = datetime.datetime.now().isoformat()
-    
-    # Simpan ke MongoDB in background thread
-    try:
-        if is_mongo_connected():
-            save_to_mongodb_async(chat_collection, conversation)
-            return jsonify({
-                'success': True,
-                'message': 'Percakapan berhasil disimpan',
-                'conversation_id': str(conversation.get('id', ''))
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'message': 'MongoDB connection lost. Percakapan tetap disimpan di localStorage.'
-            }), 503
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
-
 # Endpoint untuk mengajukan pertanyaan ke AI
 @app.route('/ask', methods=['POST'])
 def ask():
     data = request.json
     user_input = data.get('message', '')
-    conversation_id = data.get('conversation_id', '')
     
     if not user_input:
         return jsonify({'response': 'Mohon masukkan pesan!'})
@@ -190,18 +121,6 @@ def ask():
         response = model.generate_content(prompt)
         ai_response = response.text
         
-        # Log conversation data for analytics - MongoDB integration
-        if mongo_enabled and is_mongo_connected():
-            message_data = {
-                'user_input': user_input,
-                'ai_response': ai_response,
-                'timestamp': datetime.datetime.now().isoformat(),
-                'conversation_id': conversation_id
-            }
-            
-            # Menyimpan interaksi ke MongoDB in background
-            save_to_mongodb_async(chat_collection, message_data)
-        
         return jsonify({'response': ai_response, 'rawMarkdown': ai_response})
     except Exception as e:
         # Jika error 429 (rate limit) terdeteksi
@@ -209,62 +128,46 @@ def ask():
             return jsonify({'response': 'Server sedang sibuk, silakan coba ulang lain kali (ERROR: 429)'})
         return jsonify({'response': f'Error: {str(e)}'})
 
-# Endpoint to check MongoDB connection status - with quick timeout
-@app.route('/mongodb-status')
-def mongodb_status():
-    status = {
-        'connected': False,
-        'mongodb_enabled': mongo_enabled,
-        'details': {},
-        'error': None
-    }
-    
-    # Only run detailed checks if MongoDB is enabled
-    if not mongo_enabled:
-        status['error'] = 'MongoDB is disabled'
-        return jsonify(status)
+@app.route('/sync-conversations', methods=['POST'])
+def sync_conversations():
+    # Check if MongoDB is connected
+    if not mongodb_connected:
+        return jsonify({'status': 'warning', 'message': 'MongoDB is not connected, data saved locally only'})
     
     try:
-        if not mongo_client:
-            status['error'] = 'MongoDB client was not initialized'
-            return jsonify(status)
+        data = request.json
+        conversations = data.get('conversations', [])
+        user_id = data.get('user_id', 'anonymous')
+        
+        # Update or insert conversations
+        for conv in conversations:
+            # Convert datetime strings for compatibility
+            conv['last_synced'] = datetime.now(tz_jakarta)
+            conv['user_id'] = user_id
             
-        # Try to ping the server with a very short timeout
-        result = mongo_client.admin.command('ping', serverSelectionTimeoutMS=1000)
-        status['connected'] = True
-        status['details']['ping'] = result
+            # Handle serializable date fields if any
+            if 'created_at' in conv and isinstance(conv['created_at'], str):
+                try:
+                    conv['created_at'] = datetime.fromisoformat(conv['created_at'].replace('Z', '+00:00'))
+                except:
+                    pass
+            
+            conversations_collection.update_one(
+                {'id': conv['id']},
+                {'$set': conv},
+                upsert=True
+            )
         
-        # Get database list with timeout
-        status['details']['databases'] = mongo_client.list_database_names(serverSelectionTimeoutMS=1000)
-        
+        return jsonify({'status': 'success', 'message': 'Conversations synced successfully'})
     except Exception as e:
-        status['error'] = str(e)
-    
-    return jsonify(status)
+        print(f"Error syncing conversations: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
-# Health check endpoint - for monitoring
-@app.route('/health')
-def health_check():
-    health = {
-        'status': 'ok',
-        'timestamp': datetime.datetime.now().isoformat(),
-        'mongo': {
-            'enabled': mongo_enabled,
-            'connected': False
-        }
-    }
-    
-    # Do a quick check of MongoDB if it's enabled
-    if mongo_enabled:
-        try:
-            # Very short timeout to avoid blocking
-            mongo_client.admin.command('ping', serverSelectionTimeoutMS=500)
-            health['mongo']['connected'] = True
-        except Exception as e:
-            health['mongo']['connected'] = False
-            health['mongo']['error'] = str(e)
-    
-    return jsonify(health)
+@app.route('/get-conversations', methods=['GET'])
+def get_conversations():
+    # This endpoint is now disabled for security reasons
+    return jsonify({'status': 'error', 'message': 'Access denied', 'conversations': []}), 403
 
 if __name__ == '__main__':
     app.run(debug=True)

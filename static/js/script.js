@@ -97,10 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ 
-                message: message,
-                conversation_id: currentConversationId 
-            }),
+            body: JSON.stringify({ message: message }),
         })
         .then(response => response.json())
         .then(data => {
@@ -339,86 +336,108 @@ document.addEventListener('DOMContentLoaded', function() {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
     }
     
-    // Function to save conversation to MongoDB with retry and timeout
-    function saveConversationToMongoDB(conversation) {
-        // Set a timeout for the fetch request
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    // Function to save conversations to local storage
+    function saveConversations() {
+        localStorage.setItem('aiGenie_conversations', JSON.stringify(conversations));
+        // Wait a small delay to ensure local storage is updated before syncing
+        setTimeout(() => {
+            syncWithMongoDB();
+        }, 100);
+    }
+    
+    // Function to sync conversations with MongoDB
+    function syncWithMongoDB() {
+        // Make sure we have the most up-to-date data
+        const conversationsData = JSON.parse(localStorage.getItem('aiGenie_conversations') || '[]');
         
-        fetch('/save-conversation', {
+        if (!conversationsData || conversationsData.length === 0) {
+            console.log('No conversations to sync with MongoDB');
+            return;
+        }
+        
+        console.log('Syncing conversations with MongoDB:', conversationsData.length, 'conversations');
+        
+        // Make deep copy to avoid modifying the original
+        const conversationsToSync = JSON.parse(JSON.stringify(conversationsData));
+        
+        // Prepare data for MongoDB (handle JSON serialization issues)
+        conversationsToSync.forEach(conv => {
+            // Add timestamp if not present
+            if (!conv.last_synced) {
+                conv.last_synced = new Date().toISOString();
+            }
+            
+            // Add creation date if not present
+            if (!conv.created_at) {
+                conv.created_at = new Date().toISOString();
+            }
+        });
+        
+        fetch('/sync-conversations', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ conversation: conversation }),
-            signal: controller.signal
+            body: JSON.stringify({
+                conversations: conversationsToSync,
+                user_id: 'anonymous'
+            })
         })
         .then(response => {
-            clearTimeout(timeoutId);
+            if (!response.ok) {
+                throw new Error('Network response was not ok: ' + response.status);
+            }
             return response.json();
         })
         .then(data => {
-            if (data.success) {
-                console.log('Conversation saved to MongoDB:', data.conversation_id);
-            } else {
-                console.log('Note:', data.message);
-                // Still successful from user's perspective - data is in localStorage
+            if (data.status === 'success') {
+                console.log('Successfully synced conversations with MongoDB');
+            } else if (data.status === 'error') {
+                console.error('Failed to sync conversations:', data.message);
+            } else if (data.status === 'warning') {
+                console.warn('MongoDB warning:', data.message);
+                // Continue with local storage only
             }
         })
         .catch(error => {
-            // Check if this was an abort error (timeout)
-            if (error.name === 'AbortError') {
-                console.log('MongoDB save timed out - continuing with local storage only');
-            } else {
-                console.log('MongoDB save failed, but conversation saved to localStorage');
-            }
-            // Silent failure - don't disrupt user experience
+            console.error('Error syncing conversations:', error);
+            // Continue with local storage only when MongoDB sync fails
         });
     }
     
-    // Save conversations to local storage
-    function saveConversations() {
-        // Always save to localStorage first for reliability
-        localStorage.setItem('aiGenie_conversations', JSON.stringify(conversations));
+    // Function to load conversations from local storage only
+    function loadConversations() {
+        console.log('Loading conversations from local storage...');
         
-        // Find the current conversation
-        const currentConversation = conversations.find(c => c.id === currentConversationId);
-        if (currentConversation) {
-            // Only attempt MongoDB save every 5 seconds at most to avoid excessive requests
-            const now = Date.now();
-            const lastSaveTime = window.lastMongoSaveTime || 0;
-            if (now - lastSaveTime > 5000) { // 5 second minimum between saves
-                window.lastMongoSaveTime = now;
+        const saved = localStorage.getItem('aiGenie_conversations');
+        if (saved) {
+            try {
+                conversations = JSON.parse(saved);
+                console.log('Loaded', conversations.length, 'conversations from local storage');
                 
-                // Add device info to help with analytics
-                const enhancedConversation = {
-                    ...currentConversation,
-                    device_info: {
-                        userAgent: navigator.userAgent,
-                        language: navigator.language,
-                        timestamp: new Date().toISOString(),
-                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                    }
-                };
+                // Clear existing chat history
+                chatHistory.innerHTML = '';
                 
-                // Save to MongoDB with timeout and error handling
-                saveConversationToMongoDB(enhancedConversation);
+                // Add conversations to sidebar
+                conversations.forEach(conversation => {
+                    addConversationToSidebar(conversation);
+                });
+            } catch (e) {
+                console.error('Error parsing conversations from local storage:', e);
+                conversations = [];
             }
+        } else {
+            console.log('No conversations found in local storage');
+            conversations = [];
         }
     }
     
-    // Load conversations from local storage
-    function loadConversations() {
-        const saved = localStorage.getItem('aiGenie_conversations');
-        if (saved) {
-            conversations = JSON.parse(saved);
-            
-            // Add conversations to sidebar
-            conversations.forEach(conversation => {
-                addConversationToSidebar(conversation);
-            });
+    // Add event listener for storage changes
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'aiGenie_conversations') {
+            syncWithMongoDB();
         }
-    }
+    });
     
     // Initialize
     loadConversations();
