@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Val</title>
+  <link rel="shortcut icon" href="{{ url_for('static', filename='/assets/logo-fix.png') }}" type="image/x-icon">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Highlight.js dan marked.js untuk format markdown -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+</head>
+<body>
+  <!-- Mobile Toggle Button -->
+  <button class="mobile-toggle">
+    <i class="fas fa-bars"></i>
+  </button>
+  
+  <div class="admin-container">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <div class="logo-img"></div>
+          <div>
+            <h1>Admin Panel</h1>
+            <p>Val the Phoenix</p>
+          </div>
+        </div>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <a href="{{ url_for('admin_dashboard') }}" class="nav-item active">
+          <i class="fas fa-comments"></i>
+          <span>Conversations</span>
+        </a>
+        <a href="{{ url_for('admin_logout') }}" class="nav-item logout">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Logout</span>
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <p>Logged in as: <span>{{ session['admin_username'] }}</span></p>
+      </div>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="admin-content">
+      <header class="content-header">
+        <h1>
+          <i class="fas fa-comments"></i>
+          Conversations
+        </h1>
+        <div class="header-actions">
+          <span class="refresh-btn" onclick="location.reload()">
+            <i class="fas fa-sync-alt"></i> Refresh
+          </span>
+        </div>
+      </header>
+      
+      {% if error %}
+      <div class="alert alert-error">
+        <i class="fas fa-exclamation-circle"></i>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+      
+      <div class="content-body">
+        <!-- Stats Cards -->
+        <div class="stats-cards">
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-comments"></i>
+            </div>
+            <div class="stat-info">
+              <h3>Total Conversations</h3>
+              <p>{{ conversations|length }}</p>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-info">
+              <h3>Unique Users</h3>
+              <p>{{ unique_users_count }}</p>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-info">
+              <h3>Last Sync</h3>
+              <p>{{ conversations[0].last_synced_formatted if conversations and conversations|length > 0 else 'N/A' }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Conversations Table/List -->
+        <div class="conversations-container">
+          <div class="table-header">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="searchInput" placeholder="Search conversations...">
+            </div>
+          </div>
+          
+          {% if conversations %}
+          <div class="conversations-list">
+            {% for conv in conversations %}
+            <div class="conversation-card" data-id="{{ conv.id }}">
+              <div class="conversation-header" onclick="toggleConversation(this)">
+                <div class="conversation-title">
+                  <h3>{{ conv.title if conv.title else 'Untitled Conversation' }}</h3>
+                  <div class="conversation-meta">
+                    <span><i class="fas fa-user"></i> {{ conv.user_id }}</span>
+                    <span><i class="fas fa-calendar"></i> {{ conv.last_synced_formatted }}</span>
+                    <span><i class="fas fa-comments"></i> {{ conv.messages|length if conv.messages else 0 }} messages</span>
+                  </div>
+                </div>
+                <div class="conversation-actions">
+                  <i class="fas fa-chevron-down toggle-icon"></i>
+                </div>
+              </div>
+              <div class="conversation-messages">
+                {% if conv.messages %}
+                  {% for msg in conv.messages %}
+                  <div class="message message-{{ msg.role }}">
+                    <div class="message-header">
+                      <span class="message-role">{{ msg.role|title }}</span>
+                      {% if msg.role == 'assistant' %}
+                      <button class="btn-copy" onclick="copyMarkdown(this)" data-markdown="{{ msg.rawMarkdown if msg.rawMarkdown else msg.content }}">
+                        <i class="fas fa-copy"></i> Copy Markdown
+                      </button>
+                      {% endif %}
+                    </div>
+                    {% if msg.role == 'assistant' and msg.rawMarkdown %}
+                    <div class="message-content markdown-content" data-markdown="{{ msg.rawMarkdown }}"></div>
+                    {% else %}
+                    <div class="message-content">{{ msg.content }}</div>
+                    {% endif %}
+                  </div>
+                  {% endfor %}
+                {% else %}
+                <div class="no-messages">No messages in this conversation</div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="no-data">
+            <i class="fas fa-inbox"></i>
+            <p>No conversations found</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize markdown rendering for all assistant messages
+      renderMarkdownContent();
+      
+      // Initialize highlight.js for code blocks
+      document.querySelectorAll('pre code').forEach((block) => {
+        hljs.highlightElement(block);
+      });
+      
+      // Search functionality
+      const searchInput = document.getElementById('searchInput');
+      searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const conversations = document.querySelectorAll('.conversation-card');
+        
+        conversations.forEach(conv => {
+          const title = conv.querySelector('.conversation-title h3').textContent.toLowerCase();
+          const userId = conv.querySelector('.conversation-meta span:first-child').textContent.toLowerCase();
+          const messages = Array.from(conv.querySelectorAll('.message-content')).map(el => el.textContent.toLowerCase());
+          
+          const messageMatch = messages.some(msg => msg.includes(searchTerm));
+          
+          if (title.includes(searchTerm) || userId.includes(searchTerm) || messageMatch) {
+            conv.style.display = 'block';
+          } else {
+            conv.style.display = 'none';
+          }
+        });
+      });
+      
+      // Mobile sidebar toggle
+      const mobileToggle = document.querySelector('.mobile-toggle');
+      const sidebar = document.querySelector('.admin-sidebar');
+      const content = document.querySelector('.admin-content');
+      
+      if (mobileToggle && sidebar) {
+        mobileToggle.addEventListener('click', function() {
+          sidebar.classList.toggle('show');
+          document.body.classList.toggle('sidebar-open');
+        });
+        
+        // Close sidebar when clicking outside on mobile
+        content.addEventListener('click', function() {
+          if (window.innerWidth <= 768 && sidebar.classList.contains('show')) {
+            sidebar.classList.remove('show');
+            document.body.classList.remove('sidebar-open');
+          }
+        });
+      }
+    });
+    
+    function renderMarkdownContent() {
+      // Configure marked.js
+      marked.setOptions({
+        highlight: function(code, lang) {
+          if (lang && hljs.getLanguage(lang)) {
+            return hljs.highlight(code, { language: lang }).value;
+          } else {
+            return hljs.highlightAuto(code).value;
+          }
+        },
+        langPrefix: 'hljs language-',
+        breaks: true,
+        gfm: true
+      });
+      
+      // Find all markdown content divs and render them
+      document.querySelectorAll('.markdown-content').forEach(div => {
+        const content = div.getAttribute('data-markdown');
+        if (content) {
+          div.innerHTML = marked.parse(content);
+        }
+      });
+    }
+    
+    function toggleConversation(element) {
+      const card = element.closest('.conversation-card');
+      const messagesDiv = card.querySelector('.conversation-messages');
+      const toggleIcon = card.querySelector('.toggle-icon');
+      
+      if (messagesDiv.style.maxHeight) {
+        messagesDiv.style.maxHeight = null;
+        toggleIcon.classList.remove('fa-chevron-up');
+        toggleIcon.classList.add('fa-chevron-down');
+      } else {
+        messagesDiv.style.maxHeight = messagesDiv.scrollHeight + 'px';
+        toggleIcon.classList.remove('fa-chevron-down');
+        toggleIcon.classList.add('fa-chevron-up');
+      }
+    }
+    
+    function copyMarkdown(button) {
+      const markdown = button.getAttribute('data-markdown');
+      navigator.clipboard.writeText(markdown).then(() => {
+        // Change button text temporarily
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        button.classList.add('copied');
+        
+        setTimeout(() => {
+          button.innerHTML = originalHTML;
+          button.classList.remove('copied');
+        }, 2000);
+      }).catch(err => {
+        console.error('Failed to copy: ', err);
+      });
+    }
+  </script>
+</body>
+</html> 
