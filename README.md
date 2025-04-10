@@ -148,7 +148,6 @@ valiance-ai-agent/
 │   └── assets/
 │       └── logo.png        # Logo AI
 ├── .env                    # File environment untuk konfigurasi API key dan MongoDB
-└── .env.example            # Template file environment
 ```
 
 ## Tuning Data dan Kustomisasi
