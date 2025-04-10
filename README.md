@@ -13,6 +13,7 @@ Val the Phoenix adalah aplikasi chatbot berbasis **Flask** yang mengintegrasikan
 - [Struktur Proyek](#struktur-proyek)
 - [Tuning Data dan Kustomisasi](#tuning-data-dan-kustomisasi)
 - [MongoDB Chat History](#mongodb-chat-history)
+- [Keamanan Data](#keamanan-data)
 
 ## Fitur
 
@@ -21,7 +22,9 @@ Val the Phoenix adalah aplikasi chatbot berbasis **Flask** yang mengintegrasikan
 - **Antarmuka Chat Interaktif:** UI berbasis web dengan dukungan Markdown, syntax highlighting, dan riwayat percakapan.
 - **Responsif dan User-Friendly:** Auto-resizing input, pengelolaan riwayat chat, dan fitur "New Chat" untuk memulai percakapan baru.
 - **Error Handling:** Penanganan error seperti rate limit (ERROR 429) dan pengecekan validitas input.
-- **Penyimpanan Riwayat Chat:** Menyimpan seluruh percakapan baik di localStorage untuk pengalaman pengguna maupun di MongoDB untuk keperluan analisis dan pengembangan.
+- **Penyimpanan Riwayat Chat:** Menyimpan seluruh percakapan di localStorage untuk pengalaman pengguna dan secara aman di-backup ke MongoDB (one-way sync).
+- **Keamanan Data:** Isolasi data pengguna dengan sistem sinkronisasi satu arah dari local storage ke MongoDB.
+- **Fault Tolerance:** Aplikasi dapat bekerja dengan baik meskipun koneksi MongoDB gagal atau tidak tersedia.
 
 ## Persyaratan
 
@@ -70,7 +73,7 @@ Pastikan juga untuk memiliki kunci API yang valid untuk Gemini API dan URI konek
 
 - **Gemini API:** Aplikasi mengkonfigurasi Gemini API dengan membaca kunci API dari file `.env`.
 - **Tuning Data:** Data tuning disimpan di file `tuning_data.json` yang berfungsi untuk menyimpan contoh-contoh pertanyaan dan respons. Data tuning ini digunakan sebagai referensi saat membangun prompt untuk Gemini API.
-- **MongoDB:** Aplikasi menggunakan MongoDB untuk menyimpan riwayat percakapan. Koneksi ke MongoDB dikonfigurasi melalui variabel `MONGO_URI` di file `.env`.
+- **MongoDB:** Aplikasi menggunakan MongoDB untuk menyimpan backup riwayat percakapan. Koneksi ke MongoDB dikonfigurasi melalui variabel `MONGO_URI` di file `.env`. Jika MongoDB tidak tersedia, aplikasi akan tetap berfungsi dengan normal menggunakan local storage saja.
 
 ## Cara Menjalankan Aplikasi
 
@@ -117,15 +120,15 @@ Buka browser dan akses [http://127.0.0.1:5000](http://127.0.0.1:5000) untuk meli
   - `response`: Jawaban AI dalam format Markdown.
   - `rawMarkdown`: Respons mentah sebelum di-render (jika ada).
 
-- **`/save-conversation` (POST)**  
-  Endpoint untuk menyimpan seluruh percakapan ke MongoDB.  
+- **`/sync-conversations` (POST)**  
+  Endpoint untuk menyimpan percakapan dari local storage ke MongoDB.  
   **Parameter JSON:**  
-  - `conversation`: Objek berisi data percakapan lengkap.
+  - `conversations`: Array berisi objek percakapan dari local storage.
+  - `user_id`: ID pengguna (default: 'anonymous').
 
   **Response:**  
-  - `success`: Status keberhasilan.
-  - `message`: Pesan status.
-  - `conversation_id`: ID dokumen di MongoDB (jika berhasil).
+  - `status`: Status keberhasilan ('success', 'error', atau 'warning').
+  - `message`: Pesan status atau error.
 
 ## Struktur Proyek
 
@@ -170,44 +173,96 @@ Data tuning adalah kunci agar AI dapat merespons dengan tepat sesuai konteks OSI
 
 ## MongoDB Chat History
 
-Aplikasi ini menyimpan riwayat percakapan di MongoDB untuk keperluan pengembangan dan analisis. Berikut detail implementasinya:
+Aplikasi ini menggunakan MongoDB sebagai backup riwayat percakapan dengan pendekatan keamanan yang ditingkatkan. Berikut detail implementasinya:
+
+### Arsitektur Sinkronisasi
+
+Sistem menggunakan pendekatan **sinkronisasi satu arah** (one-way sync):
+
+1. **Local Storage → MongoDB**:
+   - Data percakapan disimpan di local storage browser pengguna
+   - Secara otomatis di-backup ke MongoDB setiap kali percakapan diperbarui
+   - Setiap percakapan diberi timestamp dan ID unik
+
+2. **Tidak Ada Sinkronisasi Balik**:
+   - Data tidak pernah mengalir dari MongoDB ke local storage
+   - Setiap pengguna hanya melihat percakapan mereka sendiri
+   - Jika local storage dihapus, pengguna memulai dengan riwayat kosong
 
 ### Struktur Data
 
-Data percakapan disimpan dalam dua bentuk:
+Data percakapan disimpan dengan format berikut:
 
-1. **Pesan Individual** - Menyimpan setiap pasangan pesan dan respons
-   - `user_input`: Pesan dari pengguna
-   - `ai_response`: Respons dari AI
-   - `timestamp`: Waktu pesan dikirim
-   - `conversation_id`: ID unik untuk percakapan
-
-2. **Seluruh Percakapan** - Menyimpan percakapan lengkap
-   - `id`: ID unik percakapan
-   - `title`: Judul percakapan (biasanya diambil dari pesan pertama)
-   - `messages`: Array berisi semua pesan (user dan AI)
-   - `device_info`: Informasi perangkat pengguna (browser, bahasa, dll)
-   - `timestamp`: Waktu penyimpanan ke database
-
-### Pengaksesan Data
-
-Semua data percakapan disimpan di collection `chat_history` dalam database MongoDB. Developer dapat mengakses data ini melalui:
-
-1. **MongoDB Atlas Dashboard**: Login ke [MongoDB Atlas](https://www.mongodb.com/cloud/atlas), pilih database `valiance_ai_db` dan collection `chat_history`
-2. **MongoDB Compass**: Hubungkan dengan URI MongoDB dan jelajahi data
-3. **Query API**: Gunakan pymongo atau alat lain untuk menjalankan query sesuai kebutuhan analisis
-
-Contoh query MongoDB untuk mendapatkan percakapan terakhir:
 ```javascript
-db.chat_history.find().sort({timestamp: -1}).limit(10)
+{
+  "id": "unique_conversation_id",
+  "title": "Judul percakapan dari pesan pertama",
+  "messages": [
+    {"role": "user", "content": "Pesan pengguna"},
+    {"role": "ai", "content": "Respons AI", "rawMarkdown": "Format mentah markdown"}
+  ],
+  "user_id": "anonymous",
+  "last_synced": "2025-04-10T09:15:32.421Z",
+  "created_at": "2025-04-10T09:00:00.000Z"
+}
 ```
 
-### Keamanan Data
+### Fault Tolerance
 
-Data disimpan di MongoDB Atlas dengan keamanan standar MongoDB. Pastikan:
-- URI MongoDB memiliki username/password yang aman
-- Akses IP dibatasi ke alamat yang diizinkan
-- Data sensitif tidak disimpan dalam plaintext
+Sistem didesain untuk tetap berfungsi meskipun MongoDB tidak tersedia:
+
+- Aplikasi tetap berjalan normal menggunakan local storage saja
+- Percobaan sinkronisasi otomatis akan terus dilakukan saat koneksi tersedia kembali
+- Kegagalan koneksi MongoDB tidak mempengaruhi pengalaman pengguna
+
+### Pengaksesan Data (Admin)
+
+Developer/admin dapat mengakses data percakapan melalui:
+
+1. **MongoDB Atlas Dashboard**: Login ke MongoDB Atlas, pilih database `valiance_ai_db` dan collection `conversations`
+2. **MongoDB Compass**: Hubungkan dengan URI MongoDB dan jelajahi data
+3. **Query API**: Contoh query untuk menganalisis percakapan:
+
+```javascript
+// Ambil semua percakapan dari tanggal tertentu
+db.conversations.find({
+  "created_at": { $gte: ISODate("2025-04-10T00:00:00.000Z") }
+})
+
+// Hitung jumlah percakapan per hari
+db.conversations.aggregate([
+  { $group: { 
+      _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } },
+      count: { $sum: 1 }
+    }
+  },
+  { $sort: { _id: 1 } }
+])
+```
+
+## Keamanan Data
+
+Sistem dirancang dengan fokus pada keamanan dan privasi data:
+
+### Isolasi Data Pengguna
+
+- **Sinkronisasi Satu Arah**: Data hanya mengalir dari local storage ke MongoDB, tidak sebaliknya
+- **Tidak Ada Endpoint Pengambilan Data**: Endpoint `/get-conversations` dinonaktifkan untuk keamanan
+- **Pemisahan Data Pengguna**: Setiap browser dan perangkat memiliki local storage terpisah
+
+### Perlindungan Terhadap Eksposur Data
+
+- **Tidak Ada Akses Silang**: Pengguna tidak dapat mengakses percakapan pengguna lain
+- **Menghapus Local Storage**: Menghapus local storage hanya menghapus data di perangkat tersebut, tidak mempengaruhi data di perangkat lain
+- **Backup Terisolasi**: Data di MongoDB hanya dapat diakses oleh admin sistem
+
+### Praktik Keamanan Tambahan
+
+- **Validasi Input**: Semua input dari pengguna divalidasi sebelum diproses
+- **Error Handling**: Kesalahan ditangani dengan aman tanpa mengekspos informasi sensitif
+- **Logging Aman**: Informasi sensitif tidak dicatat dalam log sistem
+
+Pendekatan keamanan ini memastikan bahwa data pengguna terlindungi, privasi terjaga, dan sistem tetap beroperasi dengan baik bahkan dalam kondisi koneksi terbatas.
 
 ---
 Copyright © 2025 Sekbid Multimedia Website Valiance
