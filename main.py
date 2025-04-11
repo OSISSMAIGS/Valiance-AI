@@ -77,6 +77,10 @@ def admin_login_required(f):
 def index():
     return render_template('index.html')
 
+@app.errorhandler(404)
+def page_not_found(e):
+    return redirect(url_for('index'))
+
 @app.route('/tune', methods=['POST'])
 def tune():
     data = request.json
