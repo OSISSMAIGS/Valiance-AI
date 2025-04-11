@@ -13,6 +13,7 @@ Val the Phoenix adalah aplikasi chatbot berbasis **Flask** yang mengintegrasikan
 - [Struktur Proyek](#struktur-proyek)
 - [Tuning Data dan Kustomisasi](#tuning-data-dan-kustomisasi)
 - [MongoDB Chat History](#mongodb-chat-history)
+- [Admin Dashboard](#admin-dashboard)
 - [Keamanan Data](#keamanan-data)
 
 ## Fitur
@@ -25,6 +26,7 @@ Val the Phoenix adalah aplikasi chatbot berbasis **Flask** yang mengintegrasikan
 - **Penyimpanan Riwayat Chat:** Menyimpan seluruh percakapan di localStorage untuk pengalaman pengguna dan secara aman di-backup ke MongoDB (one-way sync).
 - **Keamanan Data:** Isolasi data pengguna dengan sistem sinkronisasi satu arah dari local storage ke MongoDB.
 - **Fault Tolerance:** Aplikasi dapat bekerja dengan baik meskipun koneksi MongoDB gagal atau tidak tersedia.
+- **Admin Dashboard:** Panel admin dengan keamanan login untuk monitoring data percakapan dan pengguna secara real-time.
 
 ## Persyaratan
 
@@ -33,7 +35,8 @@ Val the Phoenix adalah aplikasi chatbot berbasis **Flask** yang mengintegrasikan
 - **google-generativeai**
 - **python-dotenv**
 - **pymongo**
-- **Akun MongoDB Atlas** (untuk penyimpanan data chat)
+- **bcrypt** (untuk enkripsi password admin)
+- **Akun MongoDB Atlas** (untuk penyimpanan data chat dan akun admin)
 
 Pastikan juga untuk memiliki kunci API yang valid untuk Gemini API dan URI koneksi untuk MongoDB.
 
@@ -67,6 +70,8 @@ Pastikan juga untuk memiliki kunci API yang valid untuk Gemini API dan URI konek
    ```
    GEMINI_API_KEY=your_gemini_api_key_here
    MONGO_URI=your_mongodb_uri_here
+   SECRET_KEY=your_flask_secret_key_here
+   ADMIN_SETUP_KEY=your_admin_setup_secret_key_here
    ```
 
 ## Konfigurasi
@@ -74,6 +79,7 @@ Pastikan juga untuk memiliki kunci API yang valid untuk Gemini API dan URI konek
 - **Gemini API:** Aplikasi mengkonfigurasi Gemini API dengan membaca kunci API dari file `.env`.
 - **Tuning Data:** Data tuning disimpan di file `tuning_data.json` yang berfungsi untuk menyimpan contoh-contoh pertanyaan dan respons. Data tuning ini digunakan sebagai referensi saat membangun prompt untuk Gemini API.
 - **MongoDB:** Aplikasi menggunakan MongoDB untuk menyimpan backup riwayat percakapan. Koneksi ke MongoDB dikonfigurasi melalui variabel `MONGO_URI` di file `.env`. Jika MongoDB tidak tersedia, aplikasi akan tetap berfungsi dengan normal menggunakan local storage saja.
+- **Secret Keys:** Gunakan `SECRET_KEY` untuk keamanan sesi Flask dan `ADMIN_SETUP_KEY` untuk proses pembuatan akun admin pertama kali.
 
 ## Cara Menjalankan Aplikasi
 
@@ -130,6 +136,26 @@ Buka browser dan akses [http://127.0.0.1:5000](http://127.0.0.1:5000) untuk meli
   - `status`: Status keberhasilan ('success', 'error', atau 'warning').
   - `message`: Pesan status atau error.
 
+- **`/admin/login` (GET, POST)**  
+  Halaman login untuk admin dashboard.
+
+- **`/admin` (GET)**  
+  Admin dashboard untuk melihat dan mengelola data percakapan (memerlukan otentikasi).
+
+- **`/admin/logout` (GET)**  
+  Endpoint untuk logout dari admin dashboard.
+
+- **`/setup-admin` (POST)**  
+  Endpoint untuk membuat akun admin baru.  
+  **Parameter JSON:**  
+  - `username`: Username admin.
+  - `password`: Password admin.
+  - `secret_key`: Secret key yang telah dikonfigurasi di file .env.
+
+  **Response:**  
+  - `status`: Status keberhasilan ('success' atau 'error').
+  - `message`: Pesan status atau error.
+
 ## Struktur Proyek
 
 ```
@@ -138,17 +164,20 @@ valiance-ai-agent/
 ├── tuning_data.json        # File untuk menyimpan dan mengupdate data tuning
 ├── templates/
 │   ├── index.html          # Template halaman utama
-│   └── layout.html         # Template layout umum
+│   ├── layout.html         # Template layout umum
+│   └── admin/              # Template untuk admin dashboard
+│       ├── login.html      # Halaman login admin
+│       └── dashboard.html  # Dashboard admin untuk monitoring
 ├── static/
 │   ├── css/
-│   │   └── style.css       # File stylesheet
+│   │   ├── style.css       # File stylesheet untuk chat
+│   │   └── admin.css       # File stylesheet untuk admin dashboard
 │   ├── js/
 │   │   ├── script.js       # Script utama UI
 │   │   └── sidebar.js      # Script untuk pengelolaan sidebar
 │   └── assets/
 │       └── logo.png        # Logo AI
 ├── .env                    # File environment untuk konfigurasi API key dan MongoDB
-└── .env.example            # Template file environment
 ```
 
 ## Tuning Data dan Kustomisasi
@@ -215,30 +244,54 @@ Sistem didesain untuk tetap berfungsi meskipun MongoDB tidak tersedia:
 - Percobaan sinkronisasi otomatis akan terus dilakukan saat koneksi tersedia kembali
 - Kegagalan koneksi MongoDB tidak mempengaruhi pengalaman pengguna
 
-### Pengaksesan Data (Admin)
+## Admin Dashboard
 
-Developer/admin dapat mengakses data percakapan melalui:
+Admin Dashboard adalah antarmuka khusus untuk administrator yang memungkinkan pemantauan dan pengelolaan data percakapan secara terpusat. Berikut adalah fitur-fitur utama Admin Dashboard:
 
-1. **MongoDB Atlas Dashboard**: Login ke MongoDB Atlas, pilih database `valiance_ai_db` dan collection `conversations`
-2. **MongoDB Compass**: Hubungkan dengan URI MongoDB dan jelajahi data
-3. **Query API**: Contoh query untuk menganalisis percakapan:
+### Fitur Admin Dashboard
 
-```javascript
-// Ambil semua percakapan dari tanggal tertentu
-db.conversations.find({
-  "created_at": { $gte: ISODate("2025-04-10T00:00:00.000Z") }
-})
+- **Login Aman**: Sistem autentikasi dengan enkripsi password menggunakan bcrypt
+- **Monitoring Percakapan**: Melihat seluruh riwayat percakapan pengguna yang tersimpan di MongoDB
+- **Statistik Real-time**: Menampilkan jumlah total percakapan, jumlah pengguna unik, dan waktu sinkronisasi terakhir
+- **Pencarian Data**: Pencarian cepat di seluruh database berdasarkan konten percakapan, judul, atau ID pengguna
+- **Render Markdown**: Menampilkan respons AI dalam format Markdown yang dirender dengan benar
+- **Copy Markdown**: Kemampuan untuk menyalin konten Markdown mentah dari respons AI
+- **Tampilan Responsif**: Desain UI yang bekerja dengan baik di desktop maupun perangkat mobile
+- **Keamanan Tingkat Tinggi**: Proteksi akses dengan session management dan login required
 
-// Hitung jumlah percakapan per hari
-db.conversations.aggregate([
-  { $group: { 
-      _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } },
-      count: { $sum: 1 }
-    }
-  },
-  { $sort: { _id: 1 } }
-])
-```
+### Cara Mengakses Admin Dashboard
+
+1. **Membuat Akun Admin**:
+   Untuk membuat akun admin pertama kali, kirim request POST ke endpoint `/setup-admin` dengan format:
+
+   ```json
+   {
+     "username": "admin_username_anda",
+     "password": "password_anda",
+     "secret_key": "kunci_secret_dari_env_file"
+   }
+   ```
+
+   Pastikan `secret_key` sesuai dengan nilai `ADMIN_SETUP_KEY` di file `.env`.
+
+2. **Login ke Dashboard**:
+   - Buka `/admin/login` di browser
+   - Masukkan username dan password yang telah dibuat
+   - Setelah berhasil login, Anda akan diarahkan ke dashboard admin
+
+3. **Menggunakan Dashboard**:
+   - Lihat statistik di bagian atas dashboard
+   - Telusuri daftar percakapan yang tersinkronisasi
+   - Klik pada judul percakapan untuk memperluas dan melihat detail pesan
+   - Gunakan kotak pencarian untuk menemukan percakapan spesifik
+
+### Keamanan Admin Dashboard
+
+- Password admin di-hash menggunakan bcrypt sebelum disimpan ke database
+- Session Flask digunakan untuk mengelola status login dengan aman
+- Secret key diperlukan untuk membuat akun admin, mencegah akses tidak sah
+- Semua route admin dilindungi dengan decorator `admin_login_required`
+- Tidak ada data sensitif yang ditampilkan di URL atau disimpan di client-side
 
 ## Keamanan Data
 
@@ -254,13 +307,15 @@ Sistem dirancang dengan fokus pada keamanan dan privasi data:
 
 - **Tidak Ada Akses Silang**: Pengguna tidak dapat mengakses percakapan pengguna lain
 - **Menghapus Local Storage**: Menghapus local storage hanya menghapus data di perangkat tersebut, tidak mempengaruhi data di perangkat lain
-- **Backup Terisolasi**: Data di MongoDB hanya dapat diakses oleh admin sistem
+- **Backup Terisolasi**: Data di MongoDB hanya dapat diakses oleh admin sistem melalui dashboard admin yang dilindungi login
 
 ### Praktik Keamanan Tambahan
 
 - **Validasi Input**: Semua input dari pengguna divalidasi sebelum diproses
 - **Error Handling**: Kesalahan ditangani dengan aman tanpa mengekspos informasi sensitif
 - **Logging Aman**: Informasi sensitif tidak dicatat dalam log sistem
+- **Enkripsi Password**: Password admin di-hash menggunakan bcrypt
+- **Secret Keys**: Penggunaan secret keys untuk autentikasi dan pembuatan akun admin
 
 Pendekatan keamanan ini memastikan bahwa data pengguna terlindungi, privasi terjaga, dan sistem tetap beroperasi dengan baik bahkan dalam kondisi koneksi terbatas.
 
