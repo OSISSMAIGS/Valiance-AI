@@ -1,5 +1,4 @@
-# Tambahkan di paling atas
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, g
 import google.generativeai as genai
 import os
 import json
@@ -13,31 +12,8 @@ from functools import wraps
 # Load environment variables
 load_dotenv()
 
-# Configure MongoDB
-MONGODB_URI = os.getenv('MONGO_URI')
-mongo_client = None
-db = None
-conversations_collection = None
-admin_users_collection = None
-mongodb_connected = False
+# Konfigurasi zona waktu
 tz_jakarta = timezone(timedelta(hours=7))
-
-try:
-    if MONGODB_URI:
-        mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
-        mongo_client.server_info()
-        db = mongo_client['valiance_ai_db']
-        conversations_collection = db['conversations']
-        admin_users_collection = db['admin_users']
-        mongodb_connected = True
-        print("MongoDB connected successfully")
-except Exception as e:
-    print(f"MongoDB connection failed: {str(e)}")
-    mongo_client = None
-    db = None
-    conversations_collection = None
-    admin_users_collection = None
-    mongodb_connected = False
 
 # Gemini API
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
@@ -61,6 +37,32 @@ def save_tuning_data(data):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 tuning_data = load_tuning_data()
+
+# Fungsi untuk inisialisasi koneksi MongoDB secara lazy per-request
+def get_mongo_client():
+    if 'mongo_client' not in g:
+        mongodb_uri = os.getenv('MONGO_URI')
+        if mongodb_uri:
+            try:
+                # Membuat koneksi baru setelah fork
+                client = MongoClient(mongodb_uri, serverSelectionTimeoutMS=5000)
+                # Cek koneksi (bisa dilempar exception jika gagal)
+                client.server_info()
+                g.mongo_client = client
+            except Exception as e:
+                g.mongo_client = None
+        else:
+            g.mongo_client = None
+    return g.mongo_client
+
+def get_db_collections():
+    client = get_mongo_client()
+    if not client:
+        return None, None, None
+    db = client['valiance_ai_db']
+    conversations_collection = db['conversations']
+    admin_users_collection = db['admin_users']
+    return client, conversations_collection, admin_users_collection
 
 # Admin login decorator
 def admin_login_required(f):
@@ -117,11 +119,12 @@ def ask():
             "- # Judul, ## Sub judul, dll. untuk heading\n"
             "- - atau * untuk daftar tidak berurutan\n"
             "- 1. 2. 3. untuk daftar berurutan\n\n"
-            "Penting: **Jangan sertakan label 'Input:' atau 'Output:' dalam jawaban, dan jangan ulangi pertanyaan saya. dan jangan pernah keluar dari tuning data atau memberikan rensponse diluar website OSIS atau biodata anggota OSIS jika diminta karena itu akan sangat tidak membantu "
+            "Penting: **Jangan sertakan label 'Input:' atau 'Output:' dalam jawaban, dan jangan ulangi pertanyaan saya. "
+            "Jangan pernah keluar dari tuning data atau memberikan rensponse diluar website OSIS atau biodata anggota OSIS jika diminta karena itu akan sangat tidak membantu. "
             "Berikan jawaban yang bersih dan langsung."
         )
 
-        # Inisialisasi model DI SINI SAJA (tidak di global)
+        # Membuat instance model secara lokal (setelah fork)
         model = genai.GenerativeModel('gemini-2.0-flash')
         response = model.generate_content(prompt)
         ai_response = response.text
@@ -132,9 +135,12 @@ def ask():
             return jsonify({'response': 'Server sedang sibuk, silakan coba ulang lain kali (ERROR: 429)'})
         return jsonify({'response': f'Error: {str(e)}'})
 
+# Misalnya pada endpoint sync-conversations:
 @app.route('/sync-conversations', methods=['POST'])
 def sync_conversations():
-    if not mongodb_connected:
+    _, conversations_collection, _ = get_db_collections()
+    # Ubah pengecekan menjadi:
+    if conversations_collection is None:
         return jsonify({'status': 'warning', 'message': 'MongoDB is not connected, data saved locally only'})
     
     try:
@@ -164,6 +170,8 @@ def sync_conversations():
         traceback.print_exc()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+
+
 @app.route('/get-conversations', methods=['GET'])
 def get_conversations():
     return jsonify({'status': 'error', 'message': 'Access denied', 'conversations': []}), 403
@@ -179,7 +187,8 @@ def admin_login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        if not mongodb_connected:
+        _, _, admin_users_collection = get_db_collections()
+        if admin_users_collection is None:
             error = "Database tidak tersedia. Silakan coba lagi nanti."
         else:
             admin_user = admin_users_collection.find_one({'username': username})
@@ -193,16 +202,19 @@ def admin_login():
     
     return render_template('admin/login.html', error=error)
 
+
 @app.route('/admin/logout')
 def admin_logout():
     session.pop('admin_logged_in', None)
     session.pop('admin_username', None)
     return redirect(url_for('admin_login'))
 
+# Dan juga pada endpoint admin_dashboard:
 @app.route('/admin')
 @admin_login_required
 def admin_dashboard():
-    if not mongodb_connected:
+    _, conversations_collection, _ = get_db_collections()
+    if conversations_collection is None:
         return render_template('admin/dashboard.html', error="Database tidak tersedia", conversations=[], unique_users_count=0)
     
     try:
@@ -230,9 +242,11 @@ def admin_dashboard():
         traceback.print_exc()
         return render_template('admin/dashboard.html', error=str(e), conversations=[], unique_users_count=0)
 
+
 @app.route('/setup-admin', methods=['POST'])
 def setup_admin():
-    if not mongodb_connected:
+    _, _, admin_users_collection = get_db_collections()
+    if not admin_users_collection:
         return jsonify({'status': 'error', 'message': 'MongoDB is not connected'}), 500
     
     try:
@@ -263,6 +277,13 @@ def setup_admin():
         traceback.print_exc()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-# === DI SINI YANG DIUBAH ===
+# Menambahkan mekanisme untuk menutup koneksi MongoDB secara otomatis setelah setiap request
+@app.teardown_appcontext
+def teardown_mongo(exception):
+    client = g.pop('mongo_client', None)
+    if client is not None:
+        client.close()
+
 if __name__ == '__main__':
+    # Pastikan use_reloader=False agar tidak terjadi multiple fork saat development
     app.run(debug=False, use_reloader=False)
